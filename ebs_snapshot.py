@@ -52,11 +52,21 @@ def create_snapshots(volumes):
 def delete_old_snapshots(volumes, number):
     for volume in volumes:
         snapshots = sorted(volume.snapshots(), key=lambda x:x.start_time, reverse=True)
-        for i, snapshot in enumerate(snapshots):
-            if number <= i:
+        n = 0
+        for snapshot in snapshots:
+            if number <= n:
                 msg = "delete snapshot: %s %s" % (str(snapshot.id), snapshot.start_time)
                 logging.info(msg)
-                snapshot.delete()
+                try:
+                    snapshot.delete()
+                except Exception as e:
+                    # skipping error if the snapshot is used by AMI
+                    if re.search('.+ is currently in use by .+', e.message):
+                        logging.info("The snapshot currently in use. skip ERROR.")
+                    else:
+                        raise(e)
+            else:
+                n = n + 1
 
 opts = get_options()
 
